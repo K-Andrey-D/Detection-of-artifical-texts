@@ -8,6 +8,7 @@
 #include "kmeans.h"
 #include <boost/python/numpy.hpp>
 #include <boost/python.hpp>
+#include <cmath>
 
 const int T = 10, number_of_gr = 10;
 const int chunk_size = 400;
@@ -223,12 +224,15 @@ int main() {
 	//KMeans kmeans(K, iters);
 	//kmeans.run(all_points);
 
+	std::vector<int> prediction;
+
 	/*using boost*/
 	namespace bn = boost::python::numpy;
 	namespace bp = boost::python;
 	_putenv_s("PYTHONPATH", ".");
 	Py_Initialize();
 	bn::initialize();
+
 	try
 	{
 		bp::object my_python_class_module = bp::import("mymodule");
@@ -248,7 +252,13 @@ int main() {
 			total.append(py_mas);
 		}
 		bn::ndarray array = bn::from_object(total);
-
+		auto result = my_python_class_module.attr("MyFunc")(array);
+		auto result_array = bp::extract<bn::ndarray>(result);
+		const bn::ndarray& ret = result_array();
+		int input_size = ret.shape(0);
+		double* input_ptr = reinterpret_cast<double*>(ret.get_data());
+		for (int i = 0; i < input_size; ++i)
+			prediction.push_back(ceil(*(input_ptr + i)));
 
 		/*direct calculation 2*/
 		/*vector<vector<double>> correct_matrix;
@@ -277,10 +287,7 @@ int main() {
 			list_mas.append(py_row);
 		}
 		bn::ndarray array = bn::from_object(list_mas);*/
-
-
-		my_python_class_module.attr("MyFunc")(array);
-		my_python_class_module.attr("SVM")(array);
+		
 	}
 	catch (const bp::error_already_set&)
 	{
